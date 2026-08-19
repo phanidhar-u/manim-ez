@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Manim renders & media
+renders/
+media/
+*.mp4
+*.gif
+*.webm
+
+# System & OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Environments
+venv/
+.venv/
+env/
+.env
