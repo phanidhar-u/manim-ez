@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manim EZ — Visual Animation Builder</title>
+  <meta name="description" content="A drag-and-drop visual builder that renders Manim animations beautifully." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="/static/style.css" />
+  <!-- Load Google Fonts async so they never block rendering -->
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        media="print" onload="this.media='all'" />
+  <noscript>
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+  </noscript>
+</head>
+<body>
+
+<!-- ─── Top Bar ──────────────────────────────────────────── -->
+<header id="topbar">
+  <div id="logo">
+    <div class="logo-icon">✦</div>
+    <span>Manim<strong>EZ</strong></span>
+    <span class="logo-sub">/ visual builder</span>
+  </div>
+
+  <div class="quality-toggle" title="Render quality">
+    <button class="quality-btn active" data-q="low"    id="q-low">Low</button>
+    <button class="quality-btn"        data-q="medium" id="q-med">Med</button>
+    <button class="quality-btn"        data-q="high"   id="q-hi">High</button>
+  </div>
+
+  <button class="top-btn" id="btn-code" title="View generated Manim code">
+    <span>⌨</span> Code
+  </button>
+
+  <button class="top-btn" id="btn-clear" title="Clear canvas">
+    <span>✕</span> Clear
+  </button>
+
+  <button class="top-btn" id="btn-download" title="Download rendered video">
+    <span>⬇</span> Download
+  </button>
+
+  <button class="top-btn" id="btn-render" title="Render animation">
+    <span id="render-icon">▶</span> Render
+  </button>
+</header>
+
+<!-- ─── Workspace ────────────────────────────────────────── -->
+<main id="workspace">
+
+  <!-- LEFT: Element palette -->
+  <aside id="panel-elements">
+    <div class="panel-header">Elements</div>
+    <div class="element-grid" id="element-palette">
+
+      <div class="element-chip" draggable="true" data-type="Circle" id="chip-circle">
+        <div class="chip-icon">⬤</div>
+        <div class="chip-label">Circle</div>
+      </div>
+
+      <div class="element-chip" draggable="true" data-type="Square" id="chip-square">
+        <div class="chip-icon">■</div>
+        <div class="chip-label">Square</div>
+      </div>
+
+      <div class="element-chip" draggable="true" data-type="Triangle" id="chip-triangle">
+        <div class="chip-icon">▲</div>
+        <div class="chip-label">Triangle</div>
+      </div>
+
+      <div class="element-chip" draggable="true" data-type="Rectangle" id="chip-rectangle">
+        <div class="chip-icon">▬</div>
+        <div class="chip-label">Rectangle</div>
+      </div>
+
+      <div class="element-chip" draggable="true" data-type="Line" id="chip-line">
+        <div class="chip-icon">╱</div>
+        <div class="chip-label">Line</div>
+      </div>
+
+      <div class="element-chip" draggable="true" data-type="Dot" id="chip-dot">
+        <div class="chip-icon">•</div>
+        <div class="chip-label">Dot</div>
+      </div>
+
+      <div class="element-chip" draggable="true" data-type="Arrow" id="chip-arrow">
+        <div class="chip-icon">→</div>
+        <div class="chip-label">Arrow</div>
+      </div>
+
+      <div class="element-chip" draggable="true" data-type="Star" id="chip-star">
+        <div class="chip-icon">★</div>
+        <div class="chip-label">Star</div>
+      </div>
+
+      <div class="element-chip" draggable="true" data-type="Text" id="chip-text">
+        <div class="chip-icon">T</div>
+        <div class="chip-label">Text</div>
+      </div>
+
+      <div class="element-chip" draggable="true" data-type="MathTex" id="chip-mathtex">
+        <div class="chip-icon">∑</div>
+        <div class="chip-label">MathTex</div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- CENTER: Canvas -->
+  <section id="panel-canvas">
+    <div id="canvas-area">
+      <span id="canvas-label">16 : 9  •  Canvas</span>
+
+      <div id="canvas-empty">
+        <div class="empty-icon">✦</div>
+        <p><strong>Drag elements</strong> from the left<br/>panel onto the canvas</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT: Properties -->
+  <aside id="panel-props">
+    <div class="panel-header">Properties</div>
+    <div id="props-content">
+      <div class="props-empty" id="props-empty">
+        <div class="pe-icon">🎨</div>
+        <p>Select an object on<br/>the canvas to edit its<br/>properties & animations.</p>
+      </div>
+
+      <!-- Filled in by JS when an object is selected -->
+      <div id="props-form" style="display:none; flex-direction:column; gap:14px;"></div>
+    </div>
+  </aside>
+
+  <!-- BOTTOM: Preview -->
+  <section id="panel-preview">
+    <div id="preview-header">
+      <span>▶ Preview</span>
+      <span id="preview-status">—</span>
+    </div>
+    <div id="preview-body">
+      <div id="preview-placeholder">
+        <div class="ph-icon">🎬</div>
+        <p>Hit <strong>Render</strong> to see your animation here</p>
+      </div>
+      <div id="render-spinner">
+        <div class="spinner"></div>
+        <span id="spinner-label" style="font-size:12px; color:var(--text-secondary)">Generating scene…</span>
+      </div>
+      <video id="render-video" controls loop muted playsinline></video>
+    </div>
+  </section>
+
+</main>
+
+<!-- Generated Code Panel -->
+<div id="code-panel">
+  <pre id="code-content">// No code generated yet.</pre>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
