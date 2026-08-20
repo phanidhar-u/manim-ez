@@ -167,11 +167,13 @@ function createCanvasElement(obj) {
   div.style.width  = `${size}px`;
   div.style.height = `${size}px`;
 
-  // Position
+  // Position & Scale
   const [px, py] = manimToCanvasCoords(obj.position[0], obj.position[1]);
   const half = getShapeHalf(obj.type);
   div.style.left = `${px - half}px`;
   div.style.top  = `${py - half}px`;
+  const scale = (obj.scale !== undefined && obj.scale !== null && !isNaN(obj.scale)) ? obj.scale : 1.0;
+  div.style.transform = `scale(${scale})`;
 
   div.innerHTML = renderSVGPreview(obj);
 
@@ -194,6 +196,8 @@ function updateCanvasElement(obj) {
   const half = getShapeHalf(obj.type);
   div.style.left = `${px - half}px`;
   div.style.top  = `${py - half}px`;
+  const scale = (obj.scale !== undefined && obj.scale !== null && !isNaN(obj.scale)) ? obj.scale : 1.0;
+  div.style.transform = `scale(${scale})`;
   div.innerHTML = renderSVGPreview(obj);
 }
 
@@ -516,8 +520,8 @@ function renderPropsPanel() {
       </div>
       <div class="prop-row">
         <span class="prop-label">Scale</span>
-        <input class="prop-input" type="number" id="prop-scale" min="0.1" step="0.1"
-               value="${obj.scale || 1.0}" />
+        <input class="prop-input" type="number" id="prop-scale" step="0.1"
+               value="${(obj.scale !== undefined && obj.scale !== null) ? obj.scale : 1.0}" />
       </div>
     </div>
 
@@ -552,7 +556,12 @@ function renderPropsPanel() {
   bindProp('prop-height',   'height', parseFloat);
   bindProp('prop-text',     'text');
   bindProp('prop-fontsize', 'font_size', parseInt);
-  bindProp('prop-scale',    'scale', parseFloat);
+
+  document.getElementById('prop-scale')?.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value);
+    obj.scale = isNaN(val) ? 1.0 : val;
+    updateCanvasElement(obj);
+  });
 
   document.getElementById('prop-x')?.addEventListener('input', (e) => {
     obj.position = [parseFloat(e.target.value), obj.position[1]];

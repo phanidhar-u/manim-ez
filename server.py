@@ -149,7 +149,7 @@ def build_object_code(obj: ManimObject) -> str:
         lines.append(f'{obj.id}.move_to(np.array([{x}, {y}, 0]))')
 
     # Apply scale
-    if obj.scale and obj.scale != 1.0:
+    if obj.scale is not None and obj.scale != 1.0 and obj.scale != 0:
         lines.append(f'{obj.id}.scale({obj.scale})')
 
     return "\n".join(lines)
