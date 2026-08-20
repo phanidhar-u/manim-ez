@@ -32,6 +32,14 @@ const codePanel     = document.getElementById('code-panel');
 const codeContent   = document.getElementById('code-content');
 const toast         = document.getElementById('toast');
 
+// Re-position canvas elements dynamically when canvasArea resizes
+if (typeof ResizeObserver !== 'undefined' && canvasArea) {
+  const canvasResizeObserver = new ResizeObserver(() => {
+    objects.forEach(obj => updateCanvasElement(obj));
+  });
+  canvasResizeObserver.observe(canvasArea);
+}
+
 
 // ─── Utility ────────────────────────────────────────────────
 function uid() { return 'obj_' + (++objCounter); }
