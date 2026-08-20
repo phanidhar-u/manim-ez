@@ -283,6 +283,7 @@ async def render_scene(payload: ScenePayload):
 
         # 3. Run manim CLI (use sys.executable so it always finds manim regardless of PATH)
         import sys
+        creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
         cmd = [
             sys.executable, "-m", "manim",
             q_flag,
@@ -298,6 +299,7 @@ async def render_scene(payload: ScenePayload):
             capture_output=True,
             text=True,
             timeout=120,
+            creationflags=creation_flags,
         )
 
         if result.returncode != 0:
@@ -356,4 +358,4 @@ def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=False)

@@ -788,10 +788,11 @@ async function renderScene() {
       console.error('Render API returned error status:', res.status, data);
       let errMsg = 'Render error';
       if (typeof data.detail === 'object') {
-        errMsg = data.detail.error || 'Render error';
         if (data.detail.stderr) {
-          console.error('--- MANIM STDERR TRACEBACK ---');
-          console.error(data.detail.stderr);
+          const lines = data.detail.stderr.trim().split('\n').filter(l => l.trim());
+          errMsg = lines.length ? lines[lines.length - 1] : (data.detail.error || 'Render error');
+        } else {
+          errMsg = data.detail.error || 'Render error';
         }
       } else if (data.detail) {
         errMsg = data.detail;
@@ -815,8 +816,11 @@ async function renderScene() {
 
   } catch (err) {
     setLoadingState(false);
-    setStatus(`Error: ${err.message}`, 'error');
-    showToast(`Render failed: ${err.message}`, 'error');
+    const msg = (err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')))
+      ? 'Backend server not running! Run "python server.py" in terminal.'
+      : err.message;
+    setStatus(`Error: ${msg}`, 'error');
+    showToast(`Render failed: ${msg}`, 'error');
     console.error('Render process failed:', err);
   }
 }
