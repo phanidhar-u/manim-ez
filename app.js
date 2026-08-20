@@ -96,20 +96,79 @@ const SHAPE_SIZE = {
   Line: 70, Dot: 30, Arrow: 70, Star: 56, Text: 70, MathTex: 80,
 };
 
+function getUnitPx() {
+  const rect = canvasArea ? canvasArea.getBoundingClientRect() : null;
+  const h = (rect && rect.height) ? rect.height : 450;
+  return h / 8.0;
+}
+
 function getShapeDimensions(obj) {
+  const unitPx = getUnitPx();
   const shapeType = typeof obj === 'string' ? obj : (obj ? obj.type : 'Circle');
+
+  if (shapeType === 'Circle') {
+    const r = (obj && typeof obj === 'object' && obj.radius) ? obj.radius : 1.0;
+    const size = Math.max(12, Math.round(2 * r * unitPx));
+    return { width: size, height: size, fs: 16 };
+  }
+
+  if (shapeType === 'Square') {
+    const s = (obj && typeof obj === 'object' && obj.side_length) ? obj.side_length : 2.0;
+    const size = Math.max(12, Math.round(s * unitPx));
+    return { width: size, height: size, fs: 16 };
+  }
+
+  if (shapeType === 'Triangle') {
+    const w = Math.round(2.0 * unitPx);
+    const h = Math.round(1.732 * unitPx);
+    return { width: w, height: h, fs: 16 };
+  }
+
+  if (shapeType === 'Rectangle') {
+    const wVal = (obj && typeof obj === 'object' && obj.width) ? obj.width : 3.0;
+    const hVal = (obj && typeof obj === 'object' && obj.height) ? obj.height : 2.0;
+    const w = Math.max(16, Math.round(wVal * unitPx));
+    const h = Math.max(16, Math.round(hVal * unitPx));
+    return { width: w, height: h, fs: 16 };
+  }
+
+  if (shapeType === 'Line') {
+    const w = Math.round(4.0 * unitPx);
+    const h = Math.max(20, Math.round((obj && typeof obj === 'object' && obj.stroke_width ? obj.stroke_width : 3) * 4));
+    return { width: w, height: h, fs: 16 };
+  }
+
+  if (shapeType === 'Arrow') {
+    const w = Math.round(3.0 * unitPx);
+    const h = Math.max(30, Math.round((obj && typeof obj === 'object' && obj.stroke_width ? obj.stroke_width : 3) * 5));
+    return { width: w, height: h, fs: 16 };
+  }
+
+  if (shapeType === 'Dot') {
+    const r = (obj && typeof obj === 'object' && obj.radius) ? obj.radius : 0.12;
+    const size = Math.max(6, Math.round(2 * r * unitPx));
+    return { width: size, height: size, fs: 16 };
+  }
+
+  if (shapeType === 'Star') {
+    const size = Math.round(2.0 * unitPx);
+    return { width: size, height: size, fs: 16 };
+  }
+
   if (shapeType === 'Text' || shapeType === 'MathTex') {
     const textStr = (obj && typeof obj === 'object' && obj.text !== undefined && obj.text !== null)
       ? String(obj.text)
       : (shapeType === 'MathTex' ? 'E = mc^2' : 'Hello!');
     const userFs = (obj && typeof obj === 'object' && obj.font_size) ? obj.font_size : 36;
-    const fs = Math.max(12, Math.min(60, Math.round(userFs * 0.5)));
-    const charWidth = shapeType === 'MathTex' ? fs * 0.65 : fs * 0.58;
-    const width = Math.max(70, Math.ceil(textStr.length * charWidth + 28));
-    const height = Math.max(36, Math.ceil(fs * 1.6));
+    const hManim = (userFs / 36.0) * 0.52;
+    const height = Math.max(24, Math.round(hManim * unitPx));
+    const charW = shapeType === 'MathTex' ? height * 0.75 : height * 0.65;
+    const width = Math.max(40, Math.ceil(textStr.length * charW + 16));
+    const fs = Math.max(12, Math.round(height * 0.7));
     return { width, height, fs };
   }
-  const defaultSize = SHAPE_SIZE[shapeType] || 56;
+
+  const defaultSize = Math.round(2.0 * unitPx);
   return { width: defaultSize, height: defaultSize, fs: 16 };
 }
 
@@ -135,17 +194,17 @@ function renderSVGPreview(obj) {
       inner = `<polygon points="${halfX},4 ${width - 4},${height - 4} 4,${height - 4}" fill="${c}" fill-opacity="${op}" stroke="${c}" stroke-width="${sw}"/>`;
       break;
     case 'Rectangle':
-      inner = `<rect x="4" y="${halfY - 14}" width="${width - 8}" height="28" rx="2" fill="${c}" fill-opacity="${op}" stroke="${c}" stroke-width="${sw}"/>`;
+      inner = `<rect x="4" y="4" width="${width - 8}" height="${height - 8}" rx="2" fill="${c}" fill-opacity="${op}" stroke="${c}" stroke-width="${sw}"/>`;
       break;
     case 'Line':
       inner = `<line x1="4" y1="${halfY}" x2="${width - 4}" y2="${halfY}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`;
       break;
     case 'Dot':
-      inner = `<circle cx="${halfX}" cy="${halfY}" r="${halfX - 4}" fill="${c}"/>`;
+      inner = `<circle cx="${halfX}" cy="${halfY}" r="${Math.min(halfX, halfY) - 2}" fill="${c}"/>`;
       break;
     case 'Arrow':
-      inner = `<line x1="4" y1="${halfY}" x2="${width - 14}" y2="${halfY}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>
-               <polygon points="${width - 14},${halfY - 8} ${width - 2},${halfY} ${width - 14},${halfY + 8}" fill="${c}"/>`;
+      inner = `<line x1="4" y1="${halfY}" x2="${width - 16}" y2="${halfY}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>
+               <polygon points="${width - 16},${halfY - 8} ${width - 2},${halfY} ${width - 16},${halfY + 8}" fill="${c}"/>`;
       break;
     case 'Star': {
       const pts = [];
