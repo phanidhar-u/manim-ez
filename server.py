@@ -135,8 +135,9 @@ def build_object_code(obj: ManimObject) -> str:
         lines.append(f'{obj.id} = Text("{raw_text}", font_size={fs}, color={color})')
 
     elif obj.type == "MathTex":
-        raw_text = (obj.text or r"E = mc^2").replace('\\', '\\\\').replace('"', '\\"')
-        lines.append(f'{obj.id} = MathTex(r"{raw_text}", color={color})')
+        raw_text = (obj.text or r"E = mc^2").replace('"', '\\"')
+        fs = obj.font_size or 36
+        lines.append(f'{obj.id} = MathTex(r"{raw_text}", font_size={fs}, color={color})')
 
     elif obj.type == "Star":
         lines.append(f'{obj.id} = Star(color={color}, fill_opacity={fill_op}, stroke_width={sw})')

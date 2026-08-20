@@ -96,65 +96,91 @@ const SHAPE_SIZE = {
   Line: 70, Dot: 30, Arrow: 70, Star: 56, Text: 70, MathTex: 80,
 };
 
+function getShapeDimensions(obj) {
+  const shapeType = typeof obj === 'string' ? obj : (obj ? obj.type : 'Circle');
+  if (shapeType === 'Text' || shapeType === 'MathTex') {
+    const textStr = (obj && typeof obj === 'object' && obj.text !== undefined && obj.text !== null)
+      ? String(obj.text)
+      : (shapeType === 'MathTex' ? 'E = mc^2' : 'Hello!');
+    const userFs = (obj && typeof obj === 'object' && obj.font_size) ? obj.font_size : 36;
+    const fs = Math.max(12, Math.min(60, Math.round(userFs * 0.5)));
+    const charWidth = shapeType === 'MathTex' ? fs * 0.65 : fs * 0.58;
+    const width = Math.max(70, Math.ceil(textStr.length * charWidth + 28));
+    const height = Math.max(36, Math.ceil(fs * 1.6));
+    return { width, height, fs };
+  }
+  const defaultSize = SHAPE_SIZE[shapeType] || 56;
+  return { width: defaultSize, height: defaultSize, fs: 16 };
+}
+
 function renderSVGPreview(obj) {
-  const size = SHAPE_SIZE[obj.type] || 56;
-  const half = size / 2;
+  const { width, height, fs } = getShapeDimensions(obj);
+  const halfX = width / 2;
+  const halfY = height / 2;
   const c    = obj.color || '#7c6af7';
   const op   = obj.fill_opacity !== undefined ? obj.fill_opacity : 0.7;
   const sw   = obj.stroke_width || 2;
 
   let inner = '';
-  const vb = `0 0 ${size} ${size}`;
+  const vb = `0 0 ${width} ${height}`;
 
   switch (obj.type) {
     case 'Circle':
-      inner = `<circle cx="${half}" cy="${half}" r="${half - 4}" fill="${c}" fill-opacity="${op}" stroke="${c}" stroke-width="${sw}"/>`;
+      inner = `<circle cx="${halfX}" cy="${halfY}" r="${halfX - 4}" fill="${c}" fill-opacity="${op}" stroke="${c}" stroke-width="${sw}"/>`;
       break;
     case 'Square':
-      inner = `<rect x="4" y="4" width="${size - 8}" height="${size - 8}" rx="2" fill="${c}" fill-opacity="${op}" stroke="${c}" stroke-width="${sw}"/>`;
+      inner = `<rect x="4" y="4" width="${width - 8}" height="${height - 8}" rx="2" fill="${c}" fill-opacity="${op}" stroke="${c}" stroke-width="${sw}"/>`;
       break;
     case 'Triangle':
-      inner = `<polygon points="${half},4 ${size - 4},${size - 4} 4,${size - 4}" fill="${c}" fill-opacity="${op}" stroke="${c}" stroke-width="${sw}"/>`;
+      inner = `<polygon points="${halfX},4 ${width - 4},${height - 4} 4,${height - 4}" fill="${c}" fill-opacity="${op}" stroke="${c}" stroke-width="${sw}"/>`;
       break;
     case 'Rectangle':
-      inner = `<rect x="4" y="${half - 14}" width="${size - 8}" height="28" rx="2" fill="${c}" fill-opacity="${op}" stroke="${c}" stroke-width="${sw}"/>`;
+      inner = `<rect x="4" y="${halfY - 14}" width="${width - 8}" height="28" rx="2" fill="${c}" fill-opacity="${op}" stroke="${c}" stroke-width="${sw}"/>`;
       break;
     case 'Line':
-      inner = `<line x1="4" y1="${half}" x2="${size - 4}" y2="${half}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`;
+      inner = `<line x1="4" y1="${halfY}" x2="${width - 4}" y2="${halfY}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`;
       break;
     case 'Dot':
-      inner = `<circle cx="${half}" cy="${half}" r="${half - 4}" fill="${c}"/>`;
+      inner = `<circle cx="${halfX}" cy="${halfY}" r="${halfX - 4}" fill="${c}"/>`;
       break;
     case 'Arrow':
-      inner = `<line x1="4" y1="${half}" x2="${size - 14}" y2="${half}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>
-               <polygon points="${size - 14},${half - 8} ${size - 2},${half} ${size - 14},${half + 8}" fill="${c}"/>`;
+      inner = `<line x1="4" y1="${halfY}" x2="${width - 14}" y2="${halfY}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>
+               <polygon points="${width - 14},${halfY - 8} ${width - 2},${halfY} ${width - 14},${halfY + 8}" fill="${c}"/>`;
       break;
     case 'Star': {
       const pts = [];
       for (let i = 0; i < 10; i++) {
         const angle  = (i * Math.PI) / 5 - Math.PI / 2;
-        const radius = i % 2 === 0 ? half - 3 : (half - 3) * 0.4;
-        pts.push(`${half + radius * Math.cos(angle)},${half + radius * Math.sin(angle)}`);
+        const radius = i % 2 === 0 ? halfX - 3 : (halfX - 3) * 0.4;
+        pts.push(`${halfX + radius * Math.cos(angle)},${halfY + radius * Math.sin(angle)}`);
       }
       inner = `<polygon points="${pts.join(' ')}" fill="${c}" fill-opacity="${op}" stroke="${c}" stroke-width="${sw}"/>`;
       break;
     }
-    case 'Text':
-      inner = `<text x="${half}" y="${half + 5}" text-anchor="middle" fill="${c}" font-family="Inter,sans-serif" font-size="16" font-weight="600">${(obj.text || 'T').substring(0, 6)}</text>`;
+    case 'Text': {
+      const str = obj.text || 'Hello!';
+      const safeStr = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      inner = `<text x="${halfX}" y="${halfY + fs * 0.35}" text-anchor="middle" fill="${c}" fill-opacity="${op}" font-family="Inter, system-ui, sans-serif" font-size="${fs}" font-weight="600">${safeStr}</text>`;
       break;
-    case 'MathTex':
-      inner = `<text x="${half}" y="${half + 5}" text-anchor="middle" fill="${c}" font-family="serif" font-size="14" font-style="italic">${(obj.text || 'eq').substring(0, 8)}</text>`;
+    }
+    case 'MathTex': {
+      const str = obj.text || 'E = mc^2';
+      const safeStr = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      inner = `<rect x="2" y="2" width="${width - 4}" height="${height - 4}" rx="4" fill="${c}" fill-opacity="0.08" stroke="${c}" stroke-opacity="0.3" stroke-dasharray="3 3"/>
+               <text x="${halfX}" y="${halfY + fs * 0.35}" text-anchor="middle" fill="${c}" fill-opacity="${op}" font-family="serif" font-size="${fs}" font-style="italic">${safeStr}</text>`;
       break;
+    }
     default:
-      inner = `<circle cx="${half}" cy="${half}" r="${half - 4}" fill="${c}" fill-opacity="0.7"/>`;
+      inner = `<circle cx="${halfX}" cy="${halfY}" r="${halfX - 4}" fill="${c}" fill-opacity="0.7"/>`;
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${vb}">${inner}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${vb}">${inner}</svg>`;
 }
 
 
 // ─── Canvas Object DOM Management ───────────────────────────
-function getShapeHalf(type) {
-  return (SHAPE_SIZE[type] || 56) / 2;
+function getShapeHalf(obj) {
+  const { width, height } = getShapeDimensions(obj);
+  return { halfW: width / 2, halfH: height / 2 };
 }
 
 function createCanvasElement(obj) {
@@ -163,15 +189,14 @@ function createCanvasElement(obj) {
   div.id = `canvas-${obj.id}`;
   div.dataset.objId = obj.id;
 
-  const size = SHAPE_SIZE[obj.type] || 56;
-  div.style.width  = `${size}px`;
-  div.style.height = `${size}px`;
+  const { width, height } = getShapeDimensions(obj);
+  div.style.width  = `${width}px`;
+  div.style.height = `${height}px`;
 
   // Position & Scale
   const [px, py] = manimToCanvasCoords(obj.position[0], obj.position[1]);
-  const half = getShapeHalf(obj.type);
-  div.style.left = `${px - half}px`;
-  div.style.top  = `${py - half}px`;
+  div.style.left = `${px - width / 2}px`;
+  div.style.top  = `${py - height / 2}px`;
   const scale = (obj.scale !== undefined && obj.scale !== null && !isNaN(obj.scale)) ? obj.scale : 1.0;
   div.style.transform = `scale(${scale})`;
 
@@ -189,13 +214,12 @@ function createCanvasElement(obj) {
 function updateCanvasElement(obj) {
   const div = document.getElementById(`canvas-${obj.id}`);
   if (!div) return;
-  const size = SHAPE_SIZE[obj.type] || 56;
-  div.style.width  = `${size}px`;
-  div.style.height = `${size}px`;
+  const { width, height } = getShapeDimensions(obj);
+  div.style.width  = `${width}px`;
+  div.style.height = `${height}px`;
   const [px, py] = manimToCanvasCoords(obj.position[0], obj.position[1]);
-  const half = getShapeHalf(obj.type);
-  div.style.left = `${px - half}px`;
-  div.style.top  = `${py - half}px`;
+  div.style.left = `${px - width / 2}px`;
+  div.style.top  = `${py - height / 2}px`;
   const scale = (obj.scale !== undefined && obj.scale !== null && !isNaN(obj.scale)) ? obj.scale : 1.0;
   div.style.transform = `scale(${scale})`;
   div.innerHTML = renderSVGPreview(obj);
@@ -281,9 +305,9 @@ function handlePaletteDrop(e) {
   let py = e.clientY - canvasRect.top;
 
   // Clamp
-  const half = getShapeHalf(type);
-  px = Math.max(half, Math.min(canvasRect.width  - half, px));
-  py = Math.max(half, Math.min(canvasRect.height - half, py));
+  const { halfW, halfH } = getShapeHalf(type);
+  px = Math.max(halfW, Math.min(canvasRect.width  - halfW, px));
+  py = Math.max(halfH, Math.min(canvasRect.height - halfH, py));
 
   const [mx, my] = canvasToManimCoords(px, py);
 
@@ -293,6 +317,7 @@ function handlePaletteDrop(e) {
     type,
     color: randomColor(),
     position: [mx, my],
+    scale: 1.0,
     ...defaults,
   };
 
@@ -354,24 +379,21 @@ function onGlobalMouseMove(e) {
 
   const canvasRect = canvasArea.getBoundingClientRect();
   const el   = drag.el;
-  const size = el.querySelector('svg')
-    ? parseInt(el.querySelector('svg').getAttribute('width'))
-    : 56;
+  const obj  = objects.find(o => o.id === drag.objId);
+  const { width, height } = getShapeDimensions(obj);
 
   let newLeft = drag.startLeft + dx;
   let newTop  = drag.startTop  + dy;
 
   // Clamp so shape stays inside canvas
-  newLeft = Math.max(0, Math.min(canvasRect.width  - size, newLeft));
-  newTop  = Math.max(0, Math.min(canvasRect.height - size, newTop));
+  newLeft = Math.max(0, Math.min(canvasRect.width  - width, newLeft));
+  newTop  = Math.max(0, Math.min(canvasRect.height - height, newTop));
 
   el.style.left = `${newLeft}px`;
   el.style.top  = `${newTop}px`;
 
   // Update the data model (center of shape)
-  const half = size / 2;
-  const [mx, my] = canvasToManimCoords(newLeft + half, newTop + half);
-  const obj = objects.find(o => o.id === drag.objId);
+  const [mx, my] = canvasToManimCoords(newLeft + width / 2, newTop + height / 2);
   if (obj) obj.position = [mx, my];
 }
 
