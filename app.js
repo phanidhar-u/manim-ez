@@ -495,9 +495,60 @@ function selectObject(id) {
 
 // ─── Properties Panel ────────────────────────────────────────
 const ANIMATION_TYPES = [
-  'FadeIn', 'FadeOut', 'GrowFromCenter', 'Create', 'Write',
-  'DrawBorderThenFill', 'Uncreate', 'Rotate', 'Flash', 'Indicate', 'Transform',
+  { value: 'Create',               label: '✨ Create (Draw shape)' },
+  { value: 'FadeIn',               label: '🌟 Fade In' },
+  { value: 'Write',                label: '✍️ Write (Text / Equations)' },
+  { value: 'GrowFromCenter',       label: '🌱 Grow From Center' },
+  { value: 'DrawBorderThenFill',   label: '🎨 Draw Border & Fill' },
+  { value: 'Transform',            label: '🔄 Transform (Morph into...)' },
+  { value: 'ReplacementTransform', label: '🔀 Replace & Morph into...' },
+  { value: 'Rotate',               label: '🔃 Rotate' },
+  { value: 'Flash',                label: '⚡ Flash highlight' },
+  { value: 'Indicate',             label: '👉 Indicate pulse' },
+  { value: 'FadeOut',              label: '🌫️ Fade Out' },
+  { value: 'Uncreate',             label: '💨 Uncreate (Erase)' },
 ];
+
+function getTimelineSummaryHtml() {
+  if (animations.length === 0) return '';
+
+  const sorted = [...animations].sort((a, b) => (a.start_time || 0) - (b.start_time || 0));
+  const maxEnd = Math.max(...sorted.map(a => (a.start_time || 0) + (a.duration || 1.0)), 0);
+
+  const itemsHtml = sorted.map(a => {
+    const obj = objects.find(o => o.id === a.obj_id);
+    const start = (a.start_time || 0).toFixed(1);
+    const end = ((a.start_time || 0) + (a.duration || 1.0)).toFixed(1);
+    const objName = obj ? `${obj.type} (${obj.id})` : a.obj_id;
+    let actionDesc = a.type;
+    if (a.type === 'Transform' || a.type === 'ReplacementTransform') {
+      const targetObj = objects.find(o => o.id === a.target_id);
+      const targetName = targetObj ? `${targetObj.type} (${targetObj.id})` : (a.target_id || 'none');
+      actionDesc = `Transform ➔ ${targetName}`;
+    }
+    return `
+      <div class="timeline-event-item" data-obj-id="${a.obj_id}" title="Click to view ${objName}">
+        <span class="timeline-event-time">${start}s - ${end}s</span>
+        <span class="timeline-event-desc">${objName}: ${actionDesc}</span>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="prop-section">
+      <div class="prop-section-title">🎬 Scene Timeline</div>
+      <div class="timeline-summary">
+        <div class="timeline-header">
+          <span>Animation Order</span>
+          <span class="timeline-duration">Total: ${maxEnd.toFixed(1)}s</span>
+        </div>
+        <div class="timeline-events">
+          ${itemsHtml}
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 function renderPropsPanel() {
   if (!selectedId) {
@@ -606,8 +657,10 @@ function renderPropsPanel() {
       </div>
     </div>
 
+    ${getTimelineSummaryHtml()}
+
     <div class="prop-section">
-      <div class="prop-section-title">Animations</div>
+      <div class="prop-section-title">Animations (${obj.id})</div>
       <div id="anim-list"></div>
       <button id="btn-add-anim">＋ Add animation step</button>
     </div>
@@ -617,6 +670,14 @@ function renderPropsPanel() {
 
   propsForm.innerHTML = html;
   renderAnimList(obj.id);
+
+  // Wire up timeline click events
+  propsForm.querySelectorAll('.timeline-event-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const targetObjId = el.dataset.objId;
+      if (targetObjId && targetObjId !== selectedId) selectObject(targetObjId);
+    });
+  });
 
   // ── Wire up property listeners ──
   function bindProp(elId, key, parser = v => v) {
@@ -654,17 +715,21 @@ function renderPropsPanel() {
   });
 
   document.getElementById('btn-add-anim')?.addEventListener('click', () => {
-    const myAnims = animations.filter(a => a.obj_id === obj.id);
-    const lastEnd = myAnims.length > 0
-      ? Math.max(...myAnims.map(a => a.start_time + a.duration))
+    const otherObjs = objects.filter(o => o.id !== obj.id);
+    const defaultTarget = otherObjs.length > 0 ? otherObjs[0].id : '';
+    const lastGlobalEnd = animations.length > 0
+      ? Math.max(...animations.map(a => (a.start_time || 0) + (a.duration || 1.0)))
       : 0;
+
     animations.push({
       obj_id: obj.id,
-      type: 'FadeIn',
+      type: (obj.type === 'Text' || obj.type === 'MathTex') ? 'Write' : 'Create',
       duration: 1.0,
-      start_time: parseFloat(lastEnd.toFixed(2)),
+      start_time: parseFloat(lastGlobalEnd.toFixed(2)),
+      target_id: defaultTarget,
+      angle: 90.0,
     });
-    renderAnimList(obj.id);
+    renderPropsPanel();
   });
 
   document.getElementById('btn-delete-obj')?.addEventListener('click', () => {
@@ -678,74 +743,171 @@ function renderAnimList(objId) {
   if (!list) return;
 
   const myAnims = animations.filter(a => a.obj_id === objId);
+  const otherObjs = objects.filter(o => o.id !== objId);
 
   if (myAnims.length === 0) {
-    list.innerHTML = `<p style="font-size:11px; color:var(--text-dim); text-align:center; padding: 8px 0;">No animations yet</p>`;
+    list.innerHTML = `<p style="font-size:11px; color:var(--text-dim); text-align:center; padding: 8px 0;">No animations added yet for this object.</p>`;
     return;
   }
 
   list.innerHTML = myAnims.map((anim, idx) => {
-    const typeOptions = ANIMATION_TYPES
-      .map(t => `<option value="${t}" ${t === anim.type ? 'selected' : ''}>${t}</option>`)
-      .join('');
     const globalIdx = animations.indexOf(anim);
+    const typeOptions = ANIMATION_TYPES
+      .map(t => `<option value="${t.value}" ${t.value === anim.type ? 'selected' : ''}>${t.label}</option>`)
+      .join('');
+
+    // Ensure valid target_id if Transform is selected
+    if ((anim.type === 'Transform' || anim.type === 'ReplacementTransform')) {
+      if (!anim.target_id || !objects.some(o => o.id === anim.target_id && o.id !== objId)) {
+        anim.target_id = otherObjs.length > 0 ? otherObjs[0].id : '';
+      }
+    }
+
+    const startTime = parseFloat((anim.start_time !== undefined ? anim.start_time : 0).toFixed(2));
+    const dur = parseFloat((anim.duration !== undefined ? anim.duration : 1.0).toFixed(2));
+    const endTime = parseFloat((startTime + dur).toFixed(2));
 
     return `
       <div class="anim-entry" data-anim-idx="${globalIdx}">
         <div class="anim-entry-header">
           <span class="anim-badge">#${idx + 1}</span>
-          <button class="anim-entry-remove" data-idx="${globalIdx}" title="Remove">✕</button>
+          <span class="anim-timing-badge">⏱ ${startTime}s – ${endTime}s</span>
+          <div class="anim-btn-group">
+            <button class="anim-btn-icon anim-move-up" data-idx="${globalIdx}" title="Move earlier in sequence">▲</button>
+            <button class="anim-btn-icon anim-move-down" data-idx="${globalIdx}" title="Move later in sequence">▼</button>
+            <button class="anim-entry-remove" data-idx="${globalIdx}" title="Remove animation">✕</button>
+          </div>
         </div>
-        <div class="anim-entry-row">
-          <select class="prop-select" style="flex:2" data-anim-field="type" data-idx="${globalIdx}">
+
+        <div class="anim-field-group">
+          <label class="anim-field-label">Animation Action</label>
+          <select class="prop-select" data-anim-field="type" data-idx="${globalIdx}">
             ${typeOptions}
           </select>
         </div>
+
         <div class="anim-entry-row">
-          <input class="prop-input" type="number" placeholder="Start" min="0" step="0.1"
-                 value="${anim.start_time}" data-anim-field="start_time" data-idx="${globalIdx}" style="flex:1" />
-          <input class="prop-input" type="number" placeholder="Dur" min="0.1" step="0.1"
-                 value="${anim.duration}" data-anim-field="duration" data-idx="${globalIdx}" style="flex:1" />
+          <div class="anim-field-group">
+            <label class="anim-field-label">Start Time (s)</label>
+            <input class="prop-input" type="number" min="0" step="0.1"
+                   value="${startTime}" data-anim-field="start_time" data-idx="${globalIdx}" />
+          </div>
+          <div class="anim-field-group">
+            <label class="anim-field-label">Duration (s)</label>
+            <input class="prop-input" type="number" min="0.1" step="0.1"
+                   value="${dur}" data-anim-field="duration" data-idx="${globalIdx}" />
+          </div>
         </div>
-        ${anim.type === 'Rotate' ? `
+
         <div class="anim-entry-row">
-          <span class="prop-label" style="width:auto">Angle°</span>
+          <div class="anim-field-group">
+            <label class="anim-field-label">Timing Helper</label>
+            <select class="prop-select anim-timing-preset" data-idx="${globalIdx}">
+              <option value="custom">🎯 Custom Start Time</option>
+              <option value="after_prev">⏱ Start After Previous Step</option>
+              <option value="with_prev">⚡ Start With Previous Step</option>
+            </select>
+          </div>
+        </div>
+
+        ${anim.type === 'Rotate' ? `
+        <div class="anim-field-group">
+          <label class="anim-field-label">Rotation Angle (°)</label>
           <input class="prop-input" type="number" step="15" value="${anim.angle || 90}"
                  data-anim-field="angle" data-idx="${globalIdx}" />
         </div>` : ''}
-        ${anim.type === 'Transform' ? `
-        <div class="anim-entry-row">
-          <span class="prop-label" style="width:auto">→ Target</span>
+
+        ${(anim.type === 'Transform' || anim.type === 'ReplacementTransform') ? `
+        <div class="anim-transform-box">
+          <div class="anim-transform-label">
+            <span>🔄 Morph into Target Shape:</span>
+          </div>
+          ${otherObjs.length > 0 ? `
           <select class="prop-select" data-anim-field="target_id" data-idx="${globalIdx}">
-            ${objects.filter(o => o.id !== objId)
-              .map(o => `<option value="${o.id}" ${anim.target_id === o.id ? 'selected' : ''}>${o.type} (${o.id})</option>`)
-              .join('') || '<option value="">none</option>'}
+            ${otherObjs.map(o => `
+              <option value="${o.id}" ${anim.target_id === o.id ? 'selected' : ''}>
+                ${o.type} (${o.id}) - Color: ${o.color || '#fff'}
+              </option>
+            `).join('')}
           </select>
+          ` : `
+          <div style="font-size:11px; color:var(--yellow); padding: 4px 0;">
+            ⚠️ Add another shape onto canvas to transform into!
+          </div>
+          `}
         </div>` : ''}
       </div>`;
   }).join('');
 
+  // Wire up field inputs
   list.querySelectorAll('[data-anim-field]').forEach(el => {
     el.addEventListener('change', (e) => {
       const idx   = parseInt(e.target.dataset.idx);
       const field = e.target.dataset.animField;
       const val   = (field === 'type' || field === 'target_id') ? e.target.value : parseFloat(e.target.value);
       animations[idx][field] = val;
-      if (field === 'type') renderAnimList(objId);
+      renderPropsPanel();
     });
     el.addEventListener('input', (e) => {
       if (e.target.tagName === 'SELECT') return;
       const idx   = parseInt(e.target.dataset.idx);
       const field = e.target.dataset.animField;
-      animations[idx][field] = parseFloat(e.target.value);
+      const val   = parseFloat(e.target.value);
+      if (!isNaN(val)) {
+        animations[idx][field] = val;
+      }
     });
   });
 
+  // Wire up timing preset dropdown
+  list.querySelectorAll('.anim-timing-preset').forEach(sel => {
+    sel.addEventListener('change', (e) => {
+      const idx = parseInt(e.target.dataset.idx);
+      const mode = e.target.value;
+      if (mode === 'after_prev' && idx > 0) {
+        const prev = animations[idx - 1];
+        const newStart = parseFloat(((prev.start_time || 0) + (prev.duration || 1.0)).toFixed(2));
+        animations[idx].start_time = newStart;
+        renderPropsPanel();
+      } else if (mode === 'with_prev' && idx > 0) {
+        const prev = animations[idx - 1];
+        animations[idx].start_time = parseFloat((prev.start_time || 0).toFixed(2));
+        renderPropsPanel();
+      }
+    });
+  });
+
+  // Wire up reorder buttons
+  list.querySelectorAll('.anim-move-up').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx);
+      if (idx > 0) {
+        const temp = animations[idx];
+        animations[idx] = animations[idx - 1];
+        animations[idx - 1] = temp;
+        renderPropsPanel();
+      }
+    });
+  });
+
+  list.querySelectorAll('.anim-move-down').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx);
+      if (idx < animations.length - 1) {
+        const temp = animations[idx];
+        animations[idx] = animations[idx + 1];
+        animations[idx + 1] = temp;
+        renderPropsPanel();
+      }
+    });
+  });
+
+  // Wire up remove buttons
   list.querySelectorAll('.anim-entry-remove').forEach(btn => {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.dataset.idx);
       animations.splice(idx, 1);
-      renderAnimList(objId);
+      renderPropsPanel();
     });
   });
 }
@@ -819,10 +981,22 @@ async function renderScene() {
     return;
   }
 
-  // Auto-add FadeIn for objects with no animation
-  const objsWithNoAnim = objects.filter(o => !animations.find(a => a.obj_id === o.id));
+  // Auto-add intro animation ONLY for objects that have NO animation AND are NOT a transform target
+  const transformTargets = new Set(
+    animations
+      .filter(a => (a.type === 'Transform' || a.type === 'ReplacementTransform') && a.target_id)
+      .map(a => a.target_id)
+  );
+
+  const objsWithNoAnim = objects.filter(o => !animations.find(a => a.obj_id === o.id) && !transformTargets.has(o.id));
   objsWithNoAnim.forEach((o, i) => {
-    animations.push({ obj_id: o.id, type: 'FadeIn', duration: 1.0, start_time: i * 0.3 });
+    const introType = (o.type === 'Text' || o.type === 'MathTex') ? 'Write' : 'FadeIn';
+    animations.push({
+      obj_id: o.id,
+      type: introType,
+      duration: 1.0,
+      start_time: parseFloat((i * 0.5).toFixed(2)),
+    });
   });
 
   setLoadingState(true);
@@ -848,8 +1022,15 @@ async function renderScene() {
       let errMsg = 'Render error';
       if (typeof data.detail === 'object') {
         if (data.detail.stderr) {
-          const lines = data.detail.stderr.trim().split('\n').filter(l => l.trim());
-          errMsg = lines.length ? lines[lines.length - 1] : (data.detail.error || 'Render error');
+          const lines = data.detail.stderr.trim().split('\n')
+            .map(l => l.trim())
+            .filter(l => l && !l.includes('GLib') && !l.includes('WARNING') && !l.startsWith('(process:'));
+          const errLine = lines.slice().reverse().find(l => 
+            l.toLowerCase().includes('error') || 
+            l.toLowerCase().includes('exception') || 
+            l.toLowerCase().includes('failed')
+          );
+          errMsg = errLine || (lines.length ? lines[lines.length - 1] : (data.detail.error || 'Render error'));
         } else {
           errMsg = data.detail.error || 'Render error';
         }

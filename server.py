@@ -130,14 +130,17 @@ def build_object_code(obj: ManimObject) -> str:
         lines.append(f'{obj.id} = Arrow(start=LEFT * 1.5, end=RIGHT * 1.5, color={color}, stroke_width={sw})')
 
     elif obj.type == "Text":
-        raw_text = (obj.text or "Hello!").replace('\\', '\\\\').replace('"', '\\"')
+        raw_text = obj.text if (obj.text is not None and obj.text != "") else "Hello!"
         fs = obj.font_size or 36
-        lines.append(f'{obj.id} = Text("{raw_text}", font_size={fs}, color={color})')
+        lines.append(f'{obj.id} = Text({repr(raw_text)}, font_size={fs}, color={color})')
 
     elif obj.type == "MathTex":
-        raw_text = (obj.text or r"E = mc^2").replace('"', '\\"')
+        raw_text = obj.text if (obj.text is not None and obj.text != "") else r"E = mc^2"
         fs = obj.font_size or 36
-        lines.append(f'{obj.id} = MathTex(r"{raw_text}", font_size={fs}, color={color})')
+        if "$" in raw_text:
+            lines.append(f'{obj.id} = Tex({repr(raw_text)}, font_size={fs}, color={color})')
+        else:
+            lines.append(f'{obj.id} = MathTex({repr(raw_text)}, font_size={fs}, color={color})')
 
     elif obj.type == "Star":
         lines.append(f'{obj.id} = Star(color={color}, fill_opacity={fill_op}, stroke_width={sw})')
@@ -175,8 +178,15 @@ def build_anim_expr(anim: AnimationStep) -> str:
     elif anim.type == "Uncreate":
         return f'Uncreate({oid})'
     elif anim.type == "Transform":
-        tid = anim.target_id or oid
+        tid = anim.target_id
+        if not tid or tid == oid:
+            return f'FadeIn({oid})'
         return f'Transform({oid}, {tid})'
+    elif anim.type == "ReplacementTransform":
+        tid = anim.target_id
+        if not tid or tid == oid:
+            return f'FadeIn({oid})'
+        return f'ReplacementTransform({oid}, {tid})'
     elif anim.type == "Rotate":
         angle = anim.angle or 90.0
         return f'Rotate({oid}, angle={angle} * DEGREES)'
@@ -294,12 +304,22 @@ async def render_scene(payload: ScenePayload):
             scene_class,
         ]
 
+        env = os.environ.copy()
+        env["GIO_USE_VFS"] = "local"
+        env["G_MESSAGES_PREFIXED"] = ""
+
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=120,
             creationflags=creation_flags,
+            env=env,
+        )
+
+        clean_stderr = "\n".join(
+            line for line in (result.stderr or "").splitlines()
+            if "GLib" not in line and "RuntimeWarning" not in line and not line.strip().startswith("(process:")
         )
 
         if result.returncode != 0:
@@ -307,7 +327,7 @@ async def render_scene(payload: ScenePayload):
                 status_code=500,
                 detail={
                     "error": "Manim render failed",
-                    "stderr": result.stderr[-3000:],
+                    "stderr": clean_stderr[-3000:],
                     "stdout": result.stdout[-1000:],
                     "script": script,
                 },

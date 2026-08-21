@@ -590,13 +590,15 @@ html, body {
 .anim-entry {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   position: relative;
+  transition: border-color 0.15s;
 }
+.anim-entry:hover { border-color: var(--border-light); }
 
 .anim-entry-header {
   display: flex;
@@ -613,15 +615,41 @@ html, body {
   border-radius: 99px;
 }
 
-.anim-entry-remove {
+.anim-timing-badge {
+  font-size: 10px;
+  font-family: var(--font-code);
+  color: var(--text-dim);
+  margin-right: auto;
+}
+
+.anim-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   margin-left: auto;
+}
+
+.anim-btn-icon {
   background: transparent;
   border: none;
   color: var(--text-dim);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 11px;
   line-height: 1;
-  padding: 0 2px;
+  padding: 3px 5px;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+.anim-btn-icon:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+.anim-entry-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 3px 5px;
   border-radius: 3px;
   transition: all 0.15s;
 }
@@ -629,7 +657,107 @@ html, body {
 
 .anim-entry-row {
   display: flex;
+  align-items: center;
   gap: 6px;
+}
+
+.anim-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.anim-field-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+
+.anim-transform-box {
+  background: rgba(124, 106, 247, 0.08);
+  border: 1px dashed rgba(124, 106, 247, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.anim-transform-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent-hover);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Scene Timeline list */
+.timeline-summary {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.timeline-duration {
+  font-family: var(--font-code);
+  color: var(--accent-hover);
+  font-size: 11px;
+}
+
+.timeline-events {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.timeline-event-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: var(--bg-panel);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.timeline-event-item:hover {
+  background: var(--bg-hover);
+  border-left: 2px solid var(--accent);
+}
+.timeline-event-time {
+  font-family: var(--font-code);
+  color: var(--text-dim);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.timeline-event-desc {
+  color: var(--text-primary);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Add anim button */
